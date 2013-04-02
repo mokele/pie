@@ -38,17 +38,13 @@ load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 static ERL_NIF_TERM
 gpio_init_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    int pin;
-    char mode[MAX_ATOM_LEN];
-    unsigned mode_len;
+    int pin, mode;
     if (!enif_get_int(env, argv[0], &pin) ||
-        !enif_get_atom_length(env, argv[1], &mode_len, ERL_NIF_LATIN1) ||
-        !enif_get_atom(env, argv[1], (char *)&mode, mode_len + 1, ERL_NIF_LATIN1))
+        !enif_get_int(env, argv[1], &mode))
     {
         return enif_make_badarg(env);
     }
-    unsigned int dir = mode[0] == 'i' ? INPUT : OUTPUT;
-    return gpio_init(pin, dir) == 1 ? atom_ok : error_failed_tuple;
+    return gpio_init(pin, mode) == 1 ? atom_ok : error_failed_tuple;
 }
 
 static ERL_NIF_TERM
@@ -83,19 +79,52 @@ gpio_write_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     int pin, value;
     if (!enif_get_int(env, argv[0], &pin) ||
-        !enif_get_int(env, argv[0], &value))
+        !enif_get_int(env, argv[1], &value))
     {
         return enif_make_badarg(env);
     }
     return gpio_write(pin, value) == 1 ? atom_ok : error_failed_tuple;
 }
 
+static ERL_NIF_TERM
+gpio_write_list_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    int pin;
+    unsigned int len;
+    if (!enif_get_int(env, argv[0], &pin) ||
+        !enif_get_list_length(env, argv[1], &len))
+    {
+        return enif_make_badarg(env);
+    }
+    if(len == 0) {
+        return enif_make_badarg(env);
+    }
+    ERL_NIF_TERM value_term;
+    ERL_NIF_TERM wait_term;
+    int value, wait;
+    ERL_NIF_TERM tail = argv[1];
+    while(enif_get_list_cell(env, tail, &value_term, &tail)) {
+        if(enif_get_list_cell(env, tail, &wait_term, &tail)) {
+            enif_get_int(env, value_term, &value);
+            enif_get_int(env, wait_term, &wait);
+            if(!gpio_write(pin, value)) {
+                return error_failed_tuple;
+            }
+            delayMicroseconds(wait);
+        } else {
+ 
+        }
+    }
+    return atom_ok;
+}
+
 static ErlNifFunc nif_funcs[] =
 {
   // the basics: pins and stuff
-  {"gpio_init", 2, gpio_init_nif},
+  {"gpio_init_nif", 2, gpio_init_nif},
   {"gpio_read", 1, gpio_read_nif},
-  {"gpio_write", 2, gpio_write_nif},
+  {"gpio_write_nif", 2, gpio_write_nif},
+  {"gpio_write_list", 2, gpio_write_list_nif},
   {"gpio_release", 1, gpio_release_nif}
 };
 
