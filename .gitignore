@@ -1,1 +1,3 @@
 ebin
+priv/pie_drv.so
+c_src/pie.o
