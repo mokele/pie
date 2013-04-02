@@ -1,0 +1,10 @@
+{application, pie, [
+    {description, "NIF for pihwn Raspberry-PI C interface"},
+    {vsn, "1"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib
+      ]},
+    {env, []}
+  ]}.
