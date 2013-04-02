@@ -32,7 +32,7 @@ gpio_write(Pin, Value) ->
   gpio_write_nif(Pin, value(Value)).
 gpio_write_nif(_Pin, _Value) ->
   error(not_loaded).
-gpio_write_list(_Pin, L) ->
+gpio_write_list(_Pin, _L) ->
   error(not_loaded).
 gpio_release(_Pin) ->
   error(not_loaded).
