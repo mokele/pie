@@ -16,22 +16,16 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with pie.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <stdio.h>
 #include "erl_nif.h"
 #include <pihwm.h>
 #include <pi_gpio.h>
 
 #define MAX_ATOM_LEN 32
 
-static ERL_NIF_TERM atom_ok;
-static ERL_NIF_TERM atom_error;
-static ERL_NIF_TERM error_failed_tuple;
-
 static int
 load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 {
-    atom_ok = enif_make_atom(env, "ok");
-    atom_error = enif_make_atom(env, "error");
-    error_failed_tuple = enif_make_tuple2(env, atom_error, enif_make_atom(env, "failed"));
     return 0;
 }
 
@@ -44,7 +38,11 @@ gpio_init_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     {
         return enif_make_badarg(env);
     }
-    return gpio_init(pin, mode) == 1 ? atom_ok : error_failed_tuple;
+    if(gpio_init(pin, mode) == 1) {
+        return enif_make_atom(env, "ok");
+    } else {
+        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "failed"));
+    }
 }
 
 static ERL_NIF_TERM
@@ -55,7 +53,11 @@ gpio_release_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     {
         return enif_make_badarg(env);
     }
-    return gpio_release(pin) == 1 ? atom_ok : error_failed_tuple;
+    if(gpio_release(pin) == 1) {
+        return enif_make_atom(env, "ok");
+    } else {
+        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "failed"));
+    }
 }
 
 static ERL_NIF_TERM
@@ -68,7 +70,7 @@ gpio_read_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
     int read = gpio_read(pin);
     if(read == -1) {
-        return error_failed_tuple;
+        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "failed"));
     } else {
         return enif_make_int(env, read);
     }
@@ -83,7 +85,11 @@ gpio_write_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     {
         return enif_make_badarg(env);
     }
-    return gpio_write(pin, value) == 1 ? atom_ok : error_failed_tuple;
+    if(gpio_write(pin, value) == 1) {
+        return enif_make_atom(env, "ok");
+    } else {
+        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "failed"));
+    }
 }
 
 static ERL_NIF_TERM
@@ -102,20 +108,23 @@ gpio_write_list_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ERL_NIF_TERM value_term;
     ERL_NIF_TERM wait_term;
     int value, wait;
-    ERL_NIF_TERM tail = argv[1];
-    while(enif_get_list_cell(env, tail, &value_term, &tail)) {
-        if(enif_get_list_cell(env, tail, &wait_term, &tail)) {
+    ERL_NIF_TERM current = argv[1];
+    ERL_NIF_TERM tail;
+    while(enif_get_list_cell(env, current, &value_term, &tail)) {
+        current = tail;
+        if(enif_get_list_cell(env, current, &wait_term, &tail)) {
             enif_get_int(env, value_term, &value);
             enif_get_int(env, wait_term, &wait);
             if(!gpio_write(pin, value)) {
-                return error_failed_tuple;
+                return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "failed"));
             }
             delayMicroseconds(wait);
         } else {
  
         }
+        current = tail;
     }
-    return atom_ok;
+    return enif_make_atom(env, "ok");
 }
 
 static ErlNifFunc nif_funcs[] =
